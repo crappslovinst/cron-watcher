@@ -64,14 +64,29 @@ def parse_line(line: str) -> Optional[CronEvent]:
 def parse_log_file(path: str) -> list[CronEvent]:
     """Read a log file and return all parsed CronEvents."""
     events: list[CronEvent] = []
-    with open(path, "r") as f:
-        for line in f:
-            event = parse_line(line)
-            if event is not None:
-                events.append(event)
+    try:
+        with open(path, "r") as f:
+            for line in f:
+                event = parse_line(line)
+                if event is not None:
+                    events.append(event)
+    except OSError as e:
+        raise OSError(f"Could not read log file '{path}': {e}") from e
     return events
 
 
 def filter_failures(events: list[CronEvent]) -> list[CronEvent]:
     """Return only events that are failures."""
     return [e for e in events if e.is_failure]
+
+
+def group_by_job(events: list[CronEvent]) -> dict[str, list[CronEvent]]:
+    """Group events by job name.
+
+    Events without a detected job name are grouped under the key None.
+    """
+    groups: dict[str, list[CronEvent]] = {}
+    for event in events:
+        key = event.job_name
+        groups.setdefault(key, []).append(event)
+    return groups
