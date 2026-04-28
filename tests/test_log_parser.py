@@ -63,11 +63,27 @@ def test_filter_failures():
     assert all(e.is_failure for e in failures)
 
 
+def test_filter_failures_empty_list():
+    """filter_failures should return an empty list when given no events."""
+    assert filter_failures([]) == []
+
+
 def test_to_dict_contains_expected_keys():
     event = parse_line(SAMPLE_CMD_LINE)
     assert event is not None
     d = event.to_dict()
     assert set(d.keys()) == {"timestamp", "host", "pid", "message", "job_name", "is_failure"}
+
+
+def test_to_dict_values_match_event():
+    """to_dict values should match the corresponding event attributes."""
+    event = parse_line(SAMPLE_CMD_LINE)
+    assert event is not None
+    d = event.to_dict()
+    assert d["host"] == event.host
+    assert d["pid"] == event.pid
+    assert d["job_name"] == event.job_name
+    assert d["is_failure"] == event.is_failure
 
 
 def test_parse_log_file(tmp_path):
