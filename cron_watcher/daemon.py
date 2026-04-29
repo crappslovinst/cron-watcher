@@ -50,6 +50,7 @@ class CronWatcherDaemon:
         self._poll_loop()
 
     def stop(self) -> None:
+        """Stop the daemon, watcher, and any scheduled tasks."""
         logger.info("cron-watcher daemon stopping.")
         self._running = False
         self._watcher.stop()
@@ -61,15 +62,24 @@ class CronWatcherDaemon:
     # ------------------------------------------------------------------
 
     def _poll_loop(self) -> None:
+        """Continuously poll the log watcher and dispatch alerts for failures."""
         while self._running:
-            events = self._watcher.poll()
+            try:
+                events = self._watcher.poll()
+            except Exception:
+                logger.exception("Unexpected error while polling log watcher; continuing.")
+                continue
             failures = filter_failures(events)
             if failures:
                 self._pending.extend(failures)
                 if self.config.alerts:
-                    dispatch_alerts(failures, self.config.alerts)
+                    try:
+                        dispatch_alerts(failures, self.config.alerts)
+                    except Exception:
+                        logger.exception("Failed to dispatch alerts for %d failure(s).", len(failures))
 
     def _dispatch_report(self) -> None:
+        """Build and log a periodic summary report of pending failure events."""
         if not self._pending:
             logger.debug("No pending events; skipping report dispatch.")
             return
@@ -85,7 +95,7 @@ class CronWatcherDaemon:
 
 
 def run_daemon(config_path: str) -> None:
-    """Load config and start the daemon (convenience wrapper for CLI)."""
+    """Load config from *config_path* and run the daemon until interrupted."""
     config = load_config(config_path)
     daemon = CronWatcherDaemon(config)
     daemon.start()
