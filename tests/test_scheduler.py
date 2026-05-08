@@ -80,3 +80,15 @@ def test_status_returns_dict(fast_task):
 def test_next_run_in_none_before_first_run():
     task = ScheduledTask(interval_seconds=60, task=lambda: None, name="idle")
     assert task.next_run_in is None
+
+
+def test_next_run_in_after_first_run():
+    """next_run_in should be a positive float shortly after the task has run once."""
+    task = ScheduledTask(interval_seconds=60, task=lambda: None, name="timing")
+    task.start()
+    # wait long enough for the task to fire at least once
+    time.sleep(1.5)
+    nri = task.next_run_in
+    task.stop(timeout=2)
+    assert nri is not None
+    assert 0 < nri <= 60
